@@ -9,14 +9,23 @@ public class Main {
      *  <COMMAND> <OPERAND1> <OPERAND2> ... 
      */
     public static void main(String[] args) {
-        // TODO: what if args is empty??
         if (args.length == 0) {
             System.out.println("Please enter a command.");
+            System.exit(0);
         }
         String firstArg = args[0];
         switch(firstArg) {
             case "init":
-                // TODO: handle the `init` command
+                /** creates a new gitlet version control system in the current directory. The initial
+                 * commit has the commit message "initial commit" with no files and a single
+                 * master branch. Timestamp 00:00:00 UTC, 1/1/1970
+                 */
+                if(Repository.GITLET_DIR.exists()) {
+                    System.out.println("A Gitlet version-control system already exists in the current directory.");
+                } else {
+                    Repository repo = new Repository();
+                    repo.save();
+                }
                 break;
             case "add":
                 // TODO: handle the `add [filename]` command
