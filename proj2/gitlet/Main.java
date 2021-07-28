@@ -1,5 +1,7 @@
 package gitlet;
 
+import java.io.File;
+
 /** Driver class for Gitlet, a subset of the Git version-control system.
  *  @author TODO
  */
@@ -14,6 +16,7 @@ public class Main {
             System.exit(0);
         }
         String firstArg = args[0];
+        //TODO: if repository not initialized don't work
         switch(firstArg) {
             case "init":
                 /** creates a new gitlet version control system in the current directory. The initial
@@ -29,6 +32,12 @@ public class Main {
                 break;
             case "add":
                 // TODO: handle the `add [filename]` command
+                if (args.length != 2) {
+                    System.out.println("Incorrect Operands.");
+                    break;
+                }
+                Repository repo = Repository.load();
+                repo.add(args[1]);
                 break;
             // TODO: FILL THE REST IN
             default:
