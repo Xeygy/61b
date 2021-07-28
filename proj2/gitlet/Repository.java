@@ -3,6 +3,7 @@ package gitlet;
 import java.io.File;
 import java.io.Serializable;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 
 import static gitlet.Utils.*;
@@ -17,10 +18,14 @@ import static gitlet.Utils.*;
  */
 public class Repository implements Serializable {
 
-    /** The Map of all commits and their hashes. Key hash, Value commit */
-    private HashMap commits;
+    //TODO: Change value to file or file name
+    //TODO: add master branch
+    /** The Map of all hashes of commits. Commits are stored with their hash name in .gitlet/commits/  */
+    private HashSet commits;
     /** The Map of all files staged for commits. Key hash, Value file */
     private HashMap stagingArea;
+    /** The pointer to the current commit, is a String representing the hash of the commit */
+    private String head;
 
     /**
      * TODO: add instance variables here.
@@ -53,12 +58,18 @@ public class Repository implements Serializable {
         STAGING_DIR.mkdir();
         COMMITS_DIR.mkdir();
         BLOB_DIR.mkdir();
-        Commit firstCommit = new Commit("initial commit");
-        commits = new HashMap();
+        commits = new HashSet();
         stagingArea = new HashMap();
-        commits.put(firstCommit.getHash(), firstCommit);
-    }
 
+        Commit firstCommit = new Commit("initial commit");
+        head = commitHash(firstCommit);
+        writeObject(join(COMMITS_DIR, head), firstCommit);
+        commits.add(head);
+    }
+    /** returns the sha1 hash of a commit */
+    private String commitHash(Commit c) {
+        return sha1(serialize(c));
+    }
     /** Serializes and saves the repo in .gitlet/repository */
     public void save() {
         writeObject(REPO, this);
@@ -68,7 +79,8 @@ public class Repository implements Serializable {
         return readObject(REPO, Repository.class);
     }
 
-    /** puts a reference to the file in the staging Map and copies the file to STAGING_DIR
+    /** adds a file to the staging area.
+     * puts a reference to the file in the staging Map and copies the file to STAGING_DIR
      * file name in STAGING_DIR is the hash
      * If the CWD file is the same as the file in the current commit, do not stage */
     //TODO: If the CWD file is the same as the file in the current commit, do not stage
@@ -97,9 +109,16 @@ public class Repository implements Serializable {
         return sha1(readContents(cwdFile)).equals(sha1(readContents(stagedFile)));
     }
 
-    //TODO: Need a head pointer to keep track of the current commit to set as parent
-    private void commit() {
-
+    public void commit(String message) {
+        //new commit with parent as current commit
+        Commit commit = new Commit(message, head);
+        //update head
+        //save commit in hashmap
+        head = commitHash(commit);
+        commits.add(head);
+        //save commit in COMMITS_DIR
+        writeObject(join(COMMITS_DIR, head), commit);
+        //update branch
     }
 
 }

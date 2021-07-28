@@ -31,15 +31,25 @@ public class Main {
                 }
                 break;
             case "add":
-                // TODO: handle the `add [filename]` command
                 if (args.length != 2) {
                     System.out.println("Incorrect Operands.");
                     break;
                 }
                 Repository repo = Repository.load();
                 repo.add(args[1]);
+                repo.save();
                 break;
-            // TODO: FILL THE REST IN
+            case "commit":
+                /** commits staged files with message as the second operand */
+                if (args.length != 2) {
+                    System.out.println("Incorrect Operands.");
+                    break;
+                }
+                //TODO: deal with scope (how to load repo)
+                Repository repo1 = Repository.load();
+                repo1.commit(args[1]);
+                repo1.save();
+                break;
             default:
                 System.out.println("No command with that name exists.");
                 break;

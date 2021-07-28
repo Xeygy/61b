@@ -28,18 +28,22 @@ public class Commit implements Serializable {
     /** The message of this Commit. */
     private String message;
     private Date date;
-    private Commit parent;
-    private String hash;
+    /** the sha1 hash of this commit's parent.
+     * access the parent commit by deserializing the file at location
+     * .gitlet/commits/parent
+     */
+    private String parent;
     private HashMap files; //Key filename, Value hash
 
     /** for creating a commit after the first one, requires a parent */
     //TODO: Remove "File stagedir" in constructor when done
-    public Commit(String message, Commit parent, File stagedir) {
+    public Commit(String message, String parent) {
         this.message = message;
         this.parent = parent;
+        this.files = new HashMap();
         this.date = new Date(); //current date
-        List<String> stagedFileNames = Utils.plainFilenamesIn(stagedir);
-        //copies the STAGED files to BLOB_DIR, rename as hashname
+        List<String> stagedFileNames = Utils.plainFilenamesIn(Repository.STAGING_DIR);
+        //copies the staged files to BLOB_DIR, rename as hashname
         for (String filename : stagedFileNames) {
             File stagedFile = join(Repository.STAGING_DIR, filename);
             byte[] fileContents = readContents(stagedFile);
@@ -48,47 +52,29 @@ public class Commit implements Serializable {
             files.put(filename, hashname);
         }
         //checks for files that aren't staged in CWD, looks at parent for a blob corresponding to that file
-        //TODO: don't need parent != null because this is not for the first commit
+        Commit parentCommit = this.getParent();
         for(String filename : Utils.plainFilenamesIn(Repository.CWD)) {
-            if (!files.containsKey(filename) && parent.files.containsKey(filename)) {
-                files.put(filename, parent.files.get(filename));
+            if (!files.containsKey(filename) && parentCommit.files.containsKey(filename)) {
+                files.put(filename, parentCommit.files.get(filename));
             }
         }
-        hash = Utils.sha1(this);
     }
-    /** for creating a commit after the first one, requires a parent */
-    public Commit(String message, Commit parent) {
-        this.message = message;
-        this.parent = parent;
-        this.date = new Date(); //current date
-        hash = Utils.sha1(this);
-    }
+
     /** for creating the initial commit, which has no parent */
     public Commit(String message) {
         this.message = message;
         this.parent = null;
         this.date = new Date(0); //0 seconds after the epoch
         this.files = new HashMap();
-        hash = hash();
     }
-    /** returns a sha1 hash for the object after being serialized*/
-    private String hash() {
-        byte [] thisAsByte = Utils.serialize(this);
-        return Utils.sha1(thisAsByte);
-    }
+
     public String getMessage() {
         return message;
     }
 
     public Commit getParent() {
-        return parent;
+        Commit c = readObject(join(Repository.COMMITS_DIR, parent), Commit.class);
+        return c;
     }
 
-    public String getHash() {
-        return hash;
-    }
-
-    public void addFile(File stagedFile) {
-
-    }
 }
