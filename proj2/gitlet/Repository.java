@@ -18,7 +18,6 @@ import static gitlet.Utils.*;
  */
 public class Repository implements Serializable {
 
-    //TODO: Change value to file or file name
     //TODO: add master branch
     /** The Map of all hashes of commits. Commits are stored with their hash name in .gitlet/commits/  */
     private HashSet commits;
@@ -99,7 +98,7 @@ public class Repository implements Serializable {
         stagingArea.put(hash, file); //TODO: Maybe change hash to filename as the key?
         writeContents(join(STAGING_DIR, filename), fileContents);
     }
-    /**Checks if the contents for a file in the CWD is unchanged from the one in STAGING_DIR (if both are the same)*/
+    /**Checks if the contents for a file in the CWD is unchanged from the one in the TODO: current commit (if both are the same)*/
     private boolean fileUnchanged(String filename) {
         File cwdFile = join(CWD, filename);
         File stagedFile = join(STAGING_DIR, filename);
@@ -108,17 +107,43 @@ public class Repository implements Serializable {
         }
         return sha1(readContents(cwdFile)).equals(sha1(readContents(stagedFile)));
     }
+    private Commit getCommit(String hash) {
+        Commit c = readObject(join(Repository.COMMITS_DIR, hash), Commit.class);
+        return c;
+    }
 
     public void commit(String message) {
+        if(stagingArea.isEmpty()) {
+            return;
+        }
         //new commit with parent as current commit
         Commit commit = new Commit(message, head);
-        //update head
-        //save commit in hashmap
         head = commitHash(commit);
         commits.add(head);
-        //save commit in COMMITS_DIR
         writeObject(join(COMMITS_DIR, head), commit);
-        //update branch
+        emptyStagingArea();
+        //TODO: update branch
+    }
+    private void emptyStagingArea() {
+        for (String filename : plainFilenamesIn(STAGING_DIR)) {
+            File f = Utils.join(STAGING_DIR, filename);
+            f.delete();
+        }
+        stagingArea.clear();
+    }
+
+    public void log() {
+        Commit currCommit = getCommit(head);
+        while(currCommit != null) {
+            System.out.println("===");
+            System.out.println("commit " + commitHash(currCommit));
+            //TODO: same format as gitlet date
+            System.out.println("Date: " + currCommit.getDate());
+            System.out.println(currCommit.getMessage());
+            System.out.println();
+            currCommit = currCommit.getParent();
+        }
+        //TODO: Merge logs
     }
 
 }

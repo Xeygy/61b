@@ -50,6 +50,12 @@ public class Main {
                 repo1.commit(args[1]);
                 repo1.save();
                 break;
+            case "rm":
+                break;
+            case "log":
+                Repository repo3 = Repository.load();
+                repo3.log();
+                repo3.save();
             default:
                 System.out.println("No command with that name exists.");
                 break;

@@ -72,9 +72,21 @@ public class Commit implements Serializable {
         return message;
     }
 
+    /** returns parent Commit. if no parent, return null */
     public Commit getParent() {
-        Commit c = readObject(join(Repository.COMMITS_DIR, parent), Commit.class);
+        if(parent == null) {
+            return null;
+        }
+        File parentLoc = join(Repository.COMMITS_DIR, parent);
+        Commit c = readObject(parentLoc, Commit.class);
         return c;
+    }
+    public HashMap getFiles() {
+        return files;
+    }
+
+    public Date getDate() {
+        return date;
     }
 
 }
