@@ -21,8 +21,8 @@ public class Repository implements Serializable {
     //TODO: add master branch
     /** The Map of all hashes of commits. Commits are stored with their hash name in .gitlet/commits/  */
     private HashSet commits;
-    /** The Map of all files staged for commits. Key hash, Value file */
-    private HashMap stagingArea;
+    /** The Map of all files staged for commits. Stores filenames*/
+    private HashSet stagingArea;
     /** The pointer to the current commit, is a String representing the hash of the commit */
     private String head;
 
@@ -58,7 +58,7 @@ public class Repository implements Serializable {
         COMMITS_DIR.mkdir();
         BLOB_DIR.mkdir();
         commits = new HashSet();
-        stagingArea = new HashMap();
+        stagingArea = new HashSet();
 
         Commit firstCommit = new Commit("initial commit");
         head = commitHash(firstCommit);
@@ -91,21 +91,26 @@ public class Repository implements Serializable {
         }
         if (fileUnchanged(filename)) {
             System.out.println("File unchanged"); //TODO: remove when done testing
+            if(stagingArea.contains(file)) {
+                File f = Utils.join(STAGING_DIR, filename);
+                f.delete();
+                stagingArea.remove(file);
+            }
             return;
         }
         byte[] fileContents = readContents(file);
-        String hash = sha1(fileContents);
-        stagingArea.put(hash, file); //TODO: Maybe change hash to filename as the key?
+        stagingArea.add(file);
         writeContents(join(STAGING_DIR, filename), fileContents);
     }
-    /**Checks if the contents for a file in the CWD is unchanged from the one in the TODO: current commit (if both are the same)*/
+
     private boolean fileUnchanged(String filename) {
         File cwdFile = join(CWD, filename);
-        File stagedFile = join(STAGING_DIR, filename);
-        if (!stagedFile.exists()) {
-            return false;
+        String fileHash =  sha1(readContents(cwdFile));
+        HashMap filesInCurrCommit = getCommit(head).getFiles();
+        if (filesInCurrCommit.containsKey(filename) && filesInCurrCommit.get(filename).equals(fileHash)) {
+            return true;
         }
-        return sha1(readContents(cwdFile)).equals(sha1(readContents(stagedFile)));
+        return false;
     }
     private Commit getCommit(String hash) {
         Commit c = readObject(join(Repository.COMMITS_DIR, hash), Commit.class);

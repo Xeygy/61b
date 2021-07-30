@@ -56,6 +56,7 @@ public class Main {
                 Repository repo3 = Repository.load();
                 repo3.log();
                 repo3.save();
+                break;
             default:
                 System.out.println("No command with that name exists.");
                 break;
