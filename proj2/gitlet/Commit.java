@@ -4,9 +4,7 @@ package gitlet;
 
 import java.io.File;
 import java.io.Serializable;
-import java.util.Date; // TODO: You'll likely use this in this class
-import java.util.HashMap;
-import java.util.List;
+import java.util.*;
 
 import static gitlet.Utils.*;
 
@@ -33,7 +31,7 @@ public class Commit implements Serializable {
      * .gitlet/commits/parent
      */
     private String parent;
-    private HashMap files; //Key filename, Value hash
+    private HashMap<String, String> files; //Key filename, Value hash
 
     /** for creating a commit after the first one, requires a parent */
     //TODO: Remove "File stagedir" in constructor when done
@@ -51,10 +49,18 @@ public class Commit implements Serializable {
             writeContents(join(Repository.BLOB_DIR, hashname), fileContents);
             files.put(filename, hashname);
         }
-        //checks for files that aren't staged in CWD, looks at parent for a blob corresponding to that file
+        //checks for files that are staged for removal
+        HashSet removedFiles = new HashSet();
+        for (String filename : Utils.plainFilenamesIn(Repository.REMOVAL_DIR)) {
+            removedFiles.add(filename);
+        }
+        //checks for files that are in the parent commit and adds them
+        //unless staged for removal
         Commit parentCommit = this.getParent();
-        for(String filename : Utils.plainFilenamesIn(Repository.CWD)) {
-            if (!files.containsKey(filename) && parentCommit.files.containsKey(filename)) {
+        Set<String> parentFiles = parentCommit.getFiles().keySet();
+        for(String filename : parentFiles) {
+            if (!files.containsKey(filename) && !removedFiles.contains(filename) &&
+                    parentCommit.files.containsKey(filename)) {
                 files.put(filename, parentCommit.files.get(filename));
             }
         }

@@ -51,11 +51,23 @@ public class Main {
                 repo1.save();
                 break;
             case "rm":
+                if (args.length != 2) {
+                    System.out.println("Incorrect Operands.");
+                    break;
+                }
+                Repository repo2 = Repository.load();
+                repo2.remove(args[1]);
+                repo2.save();
                 break;
             case "log":
                 Repository repo3 = Repository.load();
                 repo3.log();
                 repo3.save();
+                break;
+            case "global-log":
+                Repository repo4 = Repository.load();
+                repo4.globalLog();
+                repo4.save();
                 break;
             default:
                 System.out.println("No command with that name exists.");

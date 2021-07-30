@@ -21,8 +21,10 @@ public class Repository implements Serializable {
     //TODO: add master branch
     /** The Map of all hashes of commits. Commits are stored with their hash name in .gitlet/commits/  */
     private HashSet commits;
-    /** The Map of all files staged for commits. Stores filenames*/
+    /** The Set of all files staged for commits. Stores files*/
     private HashSet stagingArea;
+    /** The Set of all files staged for removal. Stores filenames*/
+    private HashSet removalArea;
     /** The pointer to the current commit, is a String representing the hash of the commit */
     private String head;
 
@@ -42,6 +44,8 @@ public class Repository implements Serializable {
     private static final File REPO = join(GITLET_DIR, "repository");
     /** The staging directory */
     public static final File STAGING_DIR = join(GITLET_DIR, "stage_add");
+    /** The removal directory */
+    public static final File REMOVAL_DIR = join(GITLET_DIR, "stage_rm");
     /** The commits directory */
     public static final File COMMITS_DIR = join(GITLET_DIR, "commits");
     /** The blob directory */
@@ -55,10 +59,12 @@ public class Repository implements Serializable {
     public Repository() {
         GITLET_DIR.mkdir();
         STAGING_DIR.mkdir();
+        REMOVAL_DIR.mkdir();
         COMMITS_DIR.mkdir();
         BLOB_DIR.mkdir();
         commits = new HashSet();
         stagingArea = new HashSet();
+        removalArea = new HashSet();
 
         Commit firstCommit = new Commit("initial commit");
         head = commitHash(firstCommit);
@@ -90,7 +96,6 @@ public class Repository implements Serializable {
             System.exit(0);
         }
         if (fileUnchanged(filename)) {
-            System.out.println("File unchanged"); //TODO: remove when done testing
             if(stagingArea.contains(file)) {
                 File f = Utils.join(STAGING_DIR, filename);
                 f.delete();
@@ -102,7 +107,7 @@ public class Repository implements Serializable {
         stagingArea.add(file);
         writeContents(join(STAGING_DIR, filename), fileContents);
     }
-
+    /** checks if file is unchanged from the one in the current head commit */
     private boolean fileUnchanged(String filename) {
         File cwdFile = join(CWD, filename);
         String fileHash =  sha1(readContents(cwdFile));
@@ -118,7 +123,7 @@ public class Repository implements Serializable {
     }
 
     public void commit(String message) {
-        if(stagingArea.isEmpty()) {
+        if(stagingArea.isEmpty() && removalArea.isEmpty()) {
             return;
         }
         //new commit with parent as current commit
@@ -126,29 +131,70 @@ public class Repository implements Serializable {
         head = commitHash(commit);
         commits.add(head);
         writeObject(join(COMMITS_DIR, head), commit);
-        emptyStagingArea();
+        emptyStagingAreas();
         //TODO: update branch
     }
-    private void emptyStagingArea() {
+    private void emptyStagingAreas() {
         for (String filename : plainFilenamesIn(STAGING_DIR)) {
             File f = Utils.join(STAGING_DIR, filename);
             f.delete();
         }
         stagingArea.clear();
+        for (String filename : plainFilenamesIn(REMOVAL_DIR)) {
+            File f = Utils.join(REMOVAL_DIR, filename);
+            f.delete();
+        }
+        removalArea.clear();
     }
 
+    public void remove(String filename) {
+        boolean reasonToRemoveFile = false;
+        //Is the file staged, if so, remove from staging
+        File file = join(CWD, filename);
+        if (stagingArea.contains(file)) {
+            stagingArea.remove(file);
+            reasonToRemoveFile = true;
+        }
+        //Is the file in the head commit, if so, stage for removal
+        HashMap filesInCurrCommit = getCommit(head).getFiles();
+        if (filesInCurrCommit.containsKey(filename)) {
+            byte[] fileContents = readContents(file);
+            removalArea.add(filename);
+            writeContents(join(REMOVAL_DIR, filename), fileContents);
+            file.delete();
+            reasonToRemoveFile = true;
+        }
+        //Was there a reason to remove the file, if not, tell the user
+        if (!reasonToRemoveFile) {
+            System.out.println("No reason to remove the file.");
+        }
+    }
+
+    /** displays commits in the current branch */
     public void log() {
         Commit currCommit = getCommit(head);
         while(currCommit != null) {
-            System.out.println("===");
-            System.out.println("commit " + commitHash(currCommit));
-            //TODO: same format as gitlet date
-            System.out.println("Date: " + currCommit.getDate());
-            System.out.println(currCommit.getMessage());
-            System.out.println();
+            printCommitInfo(currCommit);
             currCommit = currCommit.getParent();
         }
         //TODO: Merge logs
     }
+    private void printCommitInfo(Commit c) {
+        System.out.println("===");
+        System.out.println("commit " + commitHash(c));
+        //TODO: same format as gitlet date
+        System.out.println("Date: " + c.getDate());
+        System.out.println(c.getMessage());
+        System.out.println();
+    }
+    //TODO: Merge logs
+    /** displays all commits ever made in an arbitrary order*/
+    public void globalLog() {
+        for(String filename : plainFilenamesIn(COMMITS_DIR)) {
+            Commit currCommit = readObject(join(COMMITS_DIR, filename), Commit.class);
+            printCommitInfo(currCommit);
+        }
+    }
+
 
 }
