@@ -21,7 +21,7 @@ public class Repository implements Serializable {
     //TODO: add master branch
     /** The Map of all hashes of commits. Commits are stored with their hash name in .gitlet/commits/  */
     private HashSet commits;
-    /** The Set of all files staged for commits. Stores files*/
+    /** The Set of all files staged for commits. Stores filenames*/
     private HashSet stagingArea;
     /** The Set of all files staged for removal. Stores filenames*/
     private HashSet removalArea;
@@ -96,15 +96,15 @@ public class Repository implements Serializable {
             System.exit(0);
         }
         if (fileUnchanged(filename)) {
-            if(stagingArea.contains(file)) {
+            if(stagingArea.contains(filename)) {
                 File f = Utils.join(STAGING_DIR, filename);
                 f.delete();
-                stagingArea.remove(file);
+                stagingArea.remove(filename);
             }
             return;
         }
         byte[] fileContents = readContents(file);
-        stagingArea.add(file);
+        stagingArea.add(filename);
         writeContents(join(STAGING_DIR, filename), fileContents);
     }
     /** checks if file is unchanged from the one in the current head commit */
@@ -149,14 +149,14 @@ public class Repository implements Serializable {
 
     public void remove(String filename) {
         boolean reasonToRemoveFile = false;
-        //Is the file staged, if so, remove from staging
-        File file = join(CWD, filename);
-        if (stagingArea.contains(file)) {
-            stagingArea.remove(file);
+        //Is the file staged, if so, remove from stagingArea
+        if (stagingArea.contains(filename)) {
+            stagingArea.remove(filename);
             reasonToRemoveFile = true;
         }
         //Is the file in the head commit, if so, stage for removal
         HashMap filesInCurrCommit = getCommit(head).getFiles();
+        File file = join(CWD, filename);
         if (filesInCurrCommit.containsKey(filename)) {
             byte[] fileContents = readContents(file);
             removalArea.add(filename);
@@ -209,6 +209,30 @@ public class Repository implements Serializable {
         if (!foundMessage) {
             System.out.println("Found no commit with that message.");
         }
+    }
+
+    /** displays branches, the current branch, staged files
+     * Modifications not staged and untracked files are optional
+     */
+    public void status() {
+        System.out.println("=== Branches ===");
+        System.out.println("BRANCH PLACEHOLDER \n"); //TODO: deal with branching
+        System.out.println("=== Staged Files ===");
+        for (String filename : plainFilenamesIn(STAGING_DIR)) {
+            System.out.println(filename);
+        }
+        System.out.println("\n=== Removed Files ===");
+        for (String filename : plainFilenamesIn(REMOVAL_DIR)) {
+            System.out.println(filename);
+        }
+        System.out.println("\n=== Modifications Not Staged For Commit ==="); //TODO: this
+        System.out.println("\n=== Untracked Files ===");
+        for (String filename : plainFilenamesIn(CWD)) {
+            if (!getCommit(head).getFiles().containsKey(filename) && !stagingArea.contains(filename)) {
+                System.out.println(filename);
+            }
+        }
+
     }
 
 }

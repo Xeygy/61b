@@ -78,6 +78,11 @@ public class Main {
                 repo.find(args[1]);
                 repo.save();
                 break;
+            case "status":
+                repo = Repository.load();
+                repo.status();
+                repo.save();
+                break;
             default:
                 System.out.println("No command with that name exists.");
                 break;
