@@ -16,6 +16,7 @@ public class Main {
             System.exit(0);
         }
         String firstArg = args[0];
+        Repository repo;
         //TODO: if repository not initialized don't work
         switch(firstArg) {
             case "init":
@@ -26,7 +27,7 @@ public class Main {
                 if(Repository.GITLET_DIR.exists()) {
                     System.out.println("A Gitlet version-control system already exists in the current directory.");
                 } else {
-                    Repository repo = new Repository();
+                    repo = new Repository();
                     repo.save();
                 }
                 break;
@@ -35,7 +36,7 @@ public class Main {
                     System.out.println("Incorrect Operands.");
                     break;
                 }
-                Repository repo = Repository.load();
+                repo = Repository.load();
                 repo.add(args[1]);
                 repo.save();
                 break;
@@ -45,29 +46,37 @@ public class Main {
                     System.out.println("Incorrect Operands.");
                     break;
                 }
-                //TODO: deal with scope (how to load repo)
-                Repository repo1 = Repository.load();
-                repo1.commit(args[1]);
-                repo1.save();
+                repo = Repository.load();
+                repo.commit(args[1]);
+                repo.save();
                 break;
             case "rm":
                 if (args.length != 2) {
                     System.out.println("Incorrect Operands.");
                     break;
                 }
-                Repository repo2 = Repository.load();
-                repo2.remove(args[1]);
-                repo2.save();
+                repo = Repository.load();
+                repo.remove(args[1]);
+                repo.save();
                 break;
             case "log":
-                Repository repo3 = Repository.load();
-                repo3.log();
-                repo3.save();
+                repo = Repository.load();
+                repo.log();
+                repo.save();
                 break;
             case "global-log":
-                Repository repo4 = Repository.load();
-                repo4.globalLog();
-                repo4.save();
+                repo = Repository.load();
+                repo.globalLog();
+                repo.save();
+                break;
+            case "find":
+                if (args.length != 2) {
+                    System.out.println("Incorrect Operands."); //TODO: implement a checkOperands(int numArgs)
+                    break;
+                }
+                repo = Repository.load();
+                repo.find(args[1]);
+                repo.save();
                 break;
             default:
                 System.out.println("No command with that name exists.");

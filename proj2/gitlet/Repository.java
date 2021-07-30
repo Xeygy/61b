@@ -196,5 +196,19 @@ public class Repository implements Serializable {
         }
     }
 
+    /** displays all commits with a given message */
+    public void find(String message) {
+        boolean foundMessage = false;
+        for(String filename : plainFilenamesIn(COMMITS_DIR)) {
+            Commit currCommit = readObject(join(COMMITS_DIR, filename), Commit.class);
+            if (currCommit.getMessage().equals(message)) {
+                printCommitInfo(currCommit);
+                foundMessage = true;
+            }
+        }
+        if (!foundMessage) {
+            System.out.println("Found no commit with that message.");
+        }
+    }
 
 }
