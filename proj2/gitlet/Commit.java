@@ -95,4 +95,14 @@ public class Commit implements Serializable {
         return date;
     }
 
+    /** returns a File corresponding to the filename given, if it exists in the current commit
+     * otherwise, exits after telling the user */
+    public File getFile(String filename) {
+        if (!files.containsKey(filename)) {
+            System.out.println("File does not exist in that commit.");
+            System.exit(0);
+        }
+        return join(Repository.BLOB_DIR, files.get(filename));
+    }
+
 }

@@ -232,7 +232,26 @@ public class Repository implements Serializable {
                 System.out.println(filename);
             }
         }
+    }
 
+    public void checkout(String commitId, String filename) {
+        //TODO: support shortened commitIDs
+        if (!commits.contains(commitId)) {
+            System.out.println("No commit with that id exists.");
+            return;
+        }
+        Commit c = getCommit(commitId);
+        File commitedFile = c.getFile(filename);
+        byte[] fileContents = readContents(commitedFile);
+        writeContents(join(CWD, filename), fileContents);
+    }
+    public void checkout(String filename) {
+        checkout(head, filename);
+    }
+    public void checkoutBranch(String branchName) {
+        //TODO
+        System.out.println("Not yet implemented");
+        return;
     }
 
 }

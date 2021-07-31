@@ -83,6 +83,25 @@ public class Main {
                 repo.status();
                 repo.save();
                 break;
+            case "checkout":
+                /**
+                 * 3 cases:
+                 * checkout -- filename //checksout file from current commit
+                 * checkout commitId -- filename //checks out file from commitId
+                 * checkout branchname //checks out that branch
+                 */
+                repo = Repository.load();
+                if (args.length == 2) {
+                    repo.checkoutBranch(args[1]);
+                } else if (args.length == 3) {
+                    repo.checkout(args[2]);
+                } else if (args.length == 4) {
+                    repo.checkout(args[1], args[3]);
+                } else {
+                    System.out.println("Incorrect Operands."); 
+                }
+                repo.save();
+                break;
             default:
                 System.out.println("No command with that name exists.");
                 break;
