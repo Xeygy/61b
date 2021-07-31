@@ -98,8 +98,17 @@ public class Main {
                 } else if (args.length == 4) {
                     repo.checkout(args[1], args[3]);
                 } else {
-                    System.out.println("Incorrect Operands."); 
+                    System.out.println("Incorrect Operands.");
                 }
+                repo.save();
+                break;
+            case "branch":
+                if (args.length != 2) {
+                    System.out.println("Incorrect Operands.");
+                    break;
+                }
+                repo = Repository.load();
+                repo.branch(args[1]);
                 repo.save();
                 break;
             default:

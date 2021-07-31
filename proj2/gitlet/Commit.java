@@ -87,10 +87,13 @@ public class Commit implements Serializable {
         Commit c = readObject(parentLoc, Commit.class);
         return c;
     }
+    //TODO: replace getFiles with getFilenames
     public HashMap getFiles() {
         return files;
     }
-
+    public Set<String> getFilenames() {
+        return files.keySet();
+    }
     public Date getDate() {
         return date;
     }

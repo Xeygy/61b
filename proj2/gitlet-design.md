@@ -18,9 +18,13 @@ storing of commits in the .gitlet/commits/ directory
 * private static final File STAGING_DIR = join(GITLET_DIR, "stage_add"); - the directory storing staged files for addition
 * public static final File BLOB_DIR = join(GITLET_DIR, "blobs"); - the blob directory
 * public static final File REMOVAL_DIR = join(GITLET_DIR, "stage_rm"); - the removal directory
+
 * private HashSet commits; - the HashSet of commit object hashes.
 * private HashSet stagingArea; - The Set of all files staged for commits.  stores filenames
 * private HashSet removalArea - The Set of all files staged for removal. stores filenames
+* private String head - the hash of the current commit
+* private String currBranch - the name of the current branch
+* private HashMap branches - Key branchname, Value branchhash: a map of all branches
 ### Commit
 This class stores the metadata and references to the files in a commit. 
 The initial commit uses a constructor that takes in no parent. Manages the storing

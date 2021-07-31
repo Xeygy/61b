@@ -5,6 +5,7 @@ import java.io.Serializable;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import static gitlet.Utils.*;
 
@@ -19,7 +20,7 @@ import static gitlet.Utils.*;
 public class Repository implements Serializable {
 
     //TODO: add master branch
-    /** The Map of all hashes of commits. Commits are stored with their hash name in .gitlet/commits/  */
+    /** The Set of all hashes of commits. Commits are stored with their hash name in .gitlet/commits/  */
     private HashSet commits;
     /** The Set of all files staged for commits. Stores filenames*/
     private HashSet stagingArea;
@@ -27,6 +28,10 @@ public class Repository implements Serializable {
     private HashSet removalArea;
     /** The pointer to the current commit, is a String representing the hash of the commit */
     private String head;
+    /** The name of the current branch */
+    private String currBranch;
+    /** Key branchname, Value branchhash: a map of all branches */
+    private HashMap<String, String> branches;
 
     /**
      * TODO: add instance variables here.
@@ -65,9 +70,12 @@ public class Repository implements Serializable {
         commits = new HashSet();
         stagingArea = new HashSet();
         removalArea = new HashSet();
+        branches = new HashMap();
+        currBranch = "master";
 
         Commit firstCommit = new Commit("initial commit");
         head = commitHash(firstCommit);
+        branches.put(currBranch, head);
         writeObject(join(COMMITS_DIR, head), firstCommit);
         commits.add(head);
     }
@@ -129,6 +137,7 @@ public class Repository implements Serializable {
         //new commit with parent as current commit
         Commit commit = new Commit(message, head);
         head = commitHash(commit);
+        branches.put(currBranch, head);
         commits.add(head);
         writeObject(join(COMMITS_DIR, head), commit);
         emptyStagingAreas();
@@ -216,7 +225,12 @@ public class Repository implements Serializable {
      */
     public void status() {
         System.out.println("=== Branches ===");
-        System.out.println("BRANCH PLACEHOLDER \n"); //TODO: deal with branching
+        for(String branchName : branches.keySet()) {
+            if (branchName.equals(currBranch)) {
+                System.out.print("*");
+            }
+            System.out.println(branchName);
+        }
         System.out.println("=== Staged Files ===");
         for (String filename : plainFilenamesIn(STAGING_DIR)) {
             System.out.println(filename);
@@ -226,6 +240,13 @@ public class Repository implements Serializable {
             System.out.println(filename);
         }
         System.out.println("\n=== Modifications Not Staged For Commit ==="); //TODO: this
+        Commit currCommit = getCommit(head);
+        for (String filename : currCommit.getFilenames()) {
+            //different from currCommit
+            if (sha1(readContents(currCommit.getFile(filename))).equals(sha1())) {
+
+            }
+        }
         System.out.println("\n=== Untracked Files ===");
         for (String filename : plainFilenamesIn(CWD)) {
             if (!getCommit(head).getFiles().containsKey(filename) && !stagingArea.contains(filename)) {
@@ -248,10 +269,58 @@ public class Repository implements Serializable {
     public void checkout(String filename) {
         checkout(head, filename);
     }
+
+    /**
+     *  takes files in a commit at a given branch and puts them in the working directory
+     *  new branch becomes the head
+     *  files tracked in the current branch but not the checked out branch are cleared
+     *  staging area is cleared unless checked-out is the current branch
+     */
     public void checkoutBranch(String branchName) {
-        //TODO
-        System.out.println("Not yet implemented");
+        if (!branches.containsKey(branchName)) {
+            System.out.println("No such branch exists.");
+            return;
+        }
+        if (branchName.equals(currBranch)) {
+            System.out.println("No need to checkout the current branch.");
+            return;
+        }
+        Commit checkoutCommit = getCommit(branches.get(branchName));
+        Commit currCommit = getCommit(head);
+        Set<String> currFiles = currCommit.getFilenames();
+        Set<String> checkoutFiles = checkoutCommit.getFilenames();
+        //if a working file is untracked in the current branch that would be overwritten, stop and notify the user
+        for (String filename : plainFilenamesIn(CWD)) {
+            if (!currFiles.contains(filename) && checkoutFiles.contains(filename)) {
+                //TODO: check that the file would actually be overwitten
+                System.out.println("There is an untracked file in the way; delete it or add and commit it first.");
+                return;
+            }
+        }
+        for (String filename : checkoutFiles) {
+            if (currFiles.contains(filename)) {
+                currFiles.remove(filename);
+            }
+            //TODO: method this?
+            File currFile = checkoutCommit.getFile(filename);
+            writeContents(join(CWD, filename), readContents(currFile));
+        }
+        for (String filename : currFiles) {
+            remove(filename);
+        }
+        emptyStagingAreas();
+        currBranch = branchName;
+        head = branches.get(branchName);
         return;
+    }
+
+    /** creates a branch with a given name and points it at the head commit */
+    public void branch(String branchName) {
+        if (branches.containsKey(branchName)) {
+            System.out.println("A branch with that name already exists.");
+            return;
+        }
+        branches.put(branchName, head);
     }
 
 }
