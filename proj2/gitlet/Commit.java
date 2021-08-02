@@ -30,7 +30,7 @@ public class Commit implements Serializable {
      * access the parent commit by deserializing the file at location
      * .gitlet/commits/parent
      */
-    private String parent;
+    String parent;
     private HashMap<String, String> files; //Key filename, Value hash
 
     /** for creating a commit after the first one, requires a parent */
@@ -98,6 +98,15 @@ public class Commit implements Serializable {
         return date;
     }
 
+    /**prints info for the gitlet log command */
+    public void printInfo(String hash) {
+        System.out.println("===");
+        System.out.println("commit " + hash);
+        //TODO: same format as gitlet date
+        System.out.println("Date: " + this.getDate());
+        System.out.println(this.getMessage());
+        System.out.print("\n");
+    }
     /** returns a File corresponding to the filename given, if it exists in the current commit
      * otherwise, exits after telling the user */
     public File getFile(String filename) {
@@ -108,4 +117,19 @@ public class Commit implements Serializable {
         return join(Repository.BLOB_DIR, files.get(filename));
     }
 
+    //return null if filename doesn't exist
+    public String getFileHash(String filename) {
+        if (files.containsKey(filename)) {
+            return files.get(filename);
+        }
+        return null;
+    }
+    //returns null if file does not exist
+    public byte[] getFileContents(String filename) {
+        if (files.containsKey(filename)) {
+            File file = join(Repository.BLOB_DIR, files.get(filename));
+            return readContents(file);
+        }
+        return null;
+    }
 }

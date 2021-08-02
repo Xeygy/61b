@@ -132,6 +132,7 @@ public class Repository implements Serializable {
 
     public void commit(String message) {
         if(stagingArea.isEmpty() && removalArea.isEmpty()) {
+            System.out.println("No changes added to the commit.");
             return;
         }
         //new commit with parent as current commit
@@ -189,12 +190,7 @@ public class Repository implements Serializable {
         //TODO: Merge logs
     }
     private void printCommitInfo(Commit c) {
-        System.out.println("===");
-        System.out.println("commit " + commitHash(c));
-        //TODO: same format as gitlet date
-        System.out.println("Date: " + c.getDate());
-        System.out.println(c.getMessage());
-        System.out.println();
+        c.printInfo(commitHash(c));
     }
     //TODO: Merge logs
     /** displays all commits ever made in an arbitrary order*/
@@ -262,12 +258,15 @@ public class Repository implements Serializable {
             return;
         }
         Commit c = getCommit(commitId);
-        File commitedFile = c.getFile(filename);
-        byte[] fileContents = readContents(commitedFile);
-        writeContents(join(CWD, filename), fileContents);
+        checkout(c, filename);
     }
     public void checkout(String filename) {
         checkout(head, filename);
+    }
+    private void checkout(Commit c, String filename) {
+        File commitedFile = c.getFile(filename);
+        byte[] fileContents = readContents(commitedFile);
+        writeContents(join(CWD, filename), fileContents);
     }
 
     /**
@@ -276,12 +275,12 @@ public class Repository implements Serializable {
      *  files tracked in the current branch but not the checked out branch are cleared
      *  staging area is cleared unless checked-out is the current branch
      */
-    public void checkoutBranch(String branchName) {
+    public void checkoutBranch(String branchName, boolean reset) {
         if (!branches.containsKey(branchName)) {
             System.out.println("No such branch exists.");
             return;
         }
-        if (branchName.equals(currBranch)) {
+        if (!reset && branchName.equals(currBranch)) {
             System.out.println("No need to checkout the current branch.");
             return;
         }
@@ -294,6 +293,7 @@ public class Repository implements Serializable {
             if (!currFiles.contains(filename) && checkoutFiles.contains(filename)) {
                 //TODO: check that the file would actually be overwitten
                 System.out.println("There is an untracked file in the way; delete it or add and commit it first.");
+                branches.put(currBranch, head);
                 return;
             }
         }
@@ -313,6 +313,9 @@ public class Repository implements Serializable {
         head = branches.get(branchName);
         return;
     }
+    public void checkoutBranch(String branchName) {
+        checkoutBranch(branchName, false);
+    }
 
     /** creates a branch with a given name and points it at the head commit */
     public void branch(String branchName) {
@@ -323,4 +326,156 @@ public class Repository implements Serializable {
         branches.put(branchName, head);
     }
 
+    /** removes a branch that you're not currently on
+     * does not deletes the commits under the branch
+     */
+    public void rmBranch(String branchName) {
+        if (branchName.equals(currBranch)) {
+            System.out.println("Cannot remove the current branch.");
+            return;
+        }
+        if (!branches.containsKey(branchName)) {
+            System.out.println("A branch with that name does not exist.");
+            return;
+        }
+        branches.remove(branchName);
+     }
+
+     /** checks out a given commit and resets the branch head there */
+     public void reset(String commitID) {
+        if (!commits.contains(commitID)) {
+            System.out.println("No commit with that id exists");
+            return;
+        }
+        branches.put(currBranch, commitID);
+        checkoutBranch(currBranch, true);
+     }
+
+    //TODO: commit merge
+    public void merge(String branchB) {
+         merge(currBranch, branchB);
+    }
+    public void merge(String branchA, String branchB) {
+         /** A is current branch, B is branch to merge */
+         if (!stagingArea.isEmpty() || !removalArea.isEmpty()) {
+             System.out.print("You have uncommitted changes.");
+             return;
+         }
+         if (branchA.equals(branchB)) {
+             System.out.println("Cannot merge a branch with itself");
+             return;
+         }
+         if (!commits.contains(branches.get(branchA)) || !commits.contains(branches.get(branchB))) {
+             System.out.print("A branch with that name does not exist.");
+             return;
+         }
+         Commit commitA = getCommit(branches.get(branchA));
+         Commit commitB = getCommit(branches.get(branchB));
+         Commit splitPoint = findSplitPoint(commitA, commitB);
+         if (splitPoint == commitB) {
+             System.out.print("Given branch is an ancestor of the current branch.");
+             return;
+         }
+         if (splitPoint == commitA) {
+             checkoutBranch(branchB);
+             System.out.print("Current branch fast-forwarded");
+             return;
+         }
+         //Actual merging
+         boolean mergeConflictOccurred = false;
+         Set<String> splitFiles = splitPoint.getFilenames(); //TODO: NULLPOINTEREXCEPTION
+         for (String filename : splitFiles) {
+             String aHash = commitA.getFileHash(filename);
+             String bHash = commitB.getFileHash(filename);
+             String splitHash = splitPoint.getFileHash(filename);
+             //modified in only one? take the modified;
+             //deleted in one/both, unmodified in the other? delete;
+             boolean fileAModified = !splitHash.equals(aHash);
+             boolean fileBModified = !splitHash.equals(bHash);
+             if ((fileAModified && !fileBModified) || (!fileAModified && !fileBModified)) {
+                 //both unmodified, or only current branch (commitA) unmodified
+                 continue;
+             } else if (fileBModified && !fileAModified) {
+                 //only commitB unmodified
+                 if (bHash == null) {
+                     remove(filename);
+                 } else {
+                     checkout(commitB, filename);
+                     add(filename);
+                 }
+             } else {
+                 //file a & b both modified
+                 if (modifiedSameWay(aHash, bHash)) {
+                     continue;
+                 } else {
+                     conflict(filename, commitA, commitB);
+                     mergeConflictOccurred = true;
+                 }
+             }
+         }
+         //added new file in only one version? add to current
+         //new file in both versions? conflict
+         Set<String> aFiles = commitA.getFilenames();
+         Set<String> bFiles = commitB.getFilenames();
+         Set<String> newFiles = new HashSet<>();
+         for (String filename : aFiles) {
+             if (!splitFiles.contains(filename)) {
+                 newFiles.add(filename);
+             }
+         }
+         for (String filename : bFiles) {
+             if (newFiles.contains(filename)) {
+                 conflict(filename, commitA, commitB);
+                 mergeConflictOccurred = true;
+             } else if (!splitFiles.contains(filename)) {
+                 checkout(commitB, filename);
+                 add(filename);
+             }
+         }
+         if (mergeConflictOccurred) {
+             System.out.println("Encountered a merge conflict");
+         }
+         String mergeMessage = "Merged " + branchB + " into " + branchA + ".";
+         mergeCommit(mergeMessage, branches.get(branchB));
+     }
+     /** iterate along a and b to find a common split point */
+     private Commit findSplitPoint(Commit a, Commit b) {
+         HashSet aLog = new HashSet();
+         while(a != null) {
+             aLog.add(a);
+             a = a.getParent();
+         }
+         while (b != null) {
+             if (aLog.contains(b)) {
+                 return b;
+             }
+             b = b.getParent();
+         }
+         return null;
+     }
+     private boolean modifiedSameWay(String aHash, String bHash) {
+         if (aHash == null) {
+             return bHash == null;
+         } else {
+             return aHash.equals(bHash);
+         }
+     }
+     private void conflict(String filename, Commit a, Commit b) {
+         File file = join(CWD, filename);
+         writeContents(file, "<<<<<<< HEAD \n", a.getFileContents(filename), "=======\n", b.getFileContents(filename), ">>>>>>>");
+         add(filename);
+     }
+    public void mergeCommit(String message, String parentHash2) {
+        if(stagingArea.isEmpty() && removalArea.isEmpty()) {
+            System.out.println("No changes added to the commit.");
+            return;
+        }
+        //new merge commit with parent as current commit and given second commit
+        Commit commit = new MergeCommit(message, head, parentHash2);
+        head = commitHash(commit);
+        branches.put(currBranch, head);
+        commits.add(head);
+        writeObject(join(COMMITS_DIR, head), commit);
+        emptyStagingAreas();
+    }
 }

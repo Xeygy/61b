@@ -42,10 +42,13 @@ public class Main {
                 break;
             case "commit":
                 /** commits staged files with message as the second operand */
-                if (args.length != 2) {
+                if (args.length > 2) {
                     System.out.println("Incorrect Operands.");
                     break;
-                }
+                } if (args.length == 1) {
+                System.out.println("Please enter a commit message.");
+                break;
+            }
                 repo = Repository.load();
                 repo.commit(args[1]);
                 repo.save();
@@ -109,6 +112,33 @@ public class Main {
                 }
                 repo = Repository.load();
                 repo.branch(args[1]);
+                repo.save();
+                break;
+            case "rm-branch":
+                if (args.length != 2) {
+                    System.out.println("Incorrect Operands.");
+                    break;
+                }
+                repo = Repository.load();
+                repo.rmBranch(args[1]);
+                repo.save();
+                break;
+            case "reset":
+                if (args.length != 2) {
+                    System.out.println("Incorrect Operands.");
+                    break;
+                }
+                repo = Repository.load();
+                repo.reset(args[1]);
+                repo.save();
+                break;
+            case "merge":
+                if (args.length != 2) {
+                    System.out.println("Incorrect Operands.");
+                    break;
+                }
+                repo = Repository.load();
+                repo.merge(args[1]);
                 repo.save();
                 break;
             default:
