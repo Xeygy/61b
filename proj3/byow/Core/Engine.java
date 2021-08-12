@@ -2,12 +2,26 @@ package byow.Core;
 
 import byow.TileEngine.TERenderer;
 import byow.TileEngine.TETile;
+import byow.TileEngine.Tileset;
+
+import java.util.Random;
 
 public class Engine {
     TERenderer ter = new TERenderer();
     /* Feel free to change the width and height. */
     public static final int WIDTH = 80;
     public static final int HEIGHT = 30;
+
+    //TEMP TESTING MAIN CLASS
+    int seed = 0; //modified by input
+    Random random = new Random(seed);
+
+    public static void main(String[] args) {
+        TERenderer ter = new TERenderer();
+        ter.initialize(WIDTH, HEIGHT);
+        Engine engine = new Engine();
+        ter.renderFrame(engine.interactWithInputString("N12345S"));
+    }
 
     /**
      * Method used for exploring a fresh world. This method should handle all inputs,
@@ -37,6 +51,7 @@ public class Engine {
      * @param input the input string to feed to your program
      * @return the 2D TETile[][] representing the state of the world
      */
+
     public TETile[][] interactWithInputString(String input) {
         // TODO: Fill out this method so that it run the engine using the input
         // passed in as an argument, and return a 2D tile representation of the
@@ -45,8 +60,54 @@ public class Engine {
         //
         // See proj3.byow.InputDemo for a demo of how you can make a nice clean interface
         // that works for many different input types.
+        TETile[][] finalWorldFrame = new TETile[WIDTH][HEIGHT];
+        fillWithNothingTiles(finalWorldFrame);
 
-        TETile[][] finalWorldFrame = null;
+        /** read input */
+        int nIndex = input.indexOf("n");
+        int sIndex = input.indexOf("s");
+        if (nIndex != -1 && sIndex != -1) {
+            seed = Integer.parseInt(input.substring(nIndex + 1, sIndex));
+            random = new Random(seed);
+        }
+        generateRooms(finalWorldFrame, 40);
+
         return finalWorldFrame;
     }
+    /** adds n rectangular rooms with possible sidelengths between 2 and 6, inclusive */
+    private void generateRooms(TETile[][] tiles, int n) {
+        for (int i = 0; i < n; i++) {
+            int roomX = random.nextInt(WIDTH);
+            int roomY = random.nextInt(HEIGHT);
+            int roomWidth = random.nextInt(5) + 2; //0 to 4, plus 2
+            int roomHeight = random.nextInt(5) + 2;
+            generateRoom(tiles, roomX, roomY, roomWidth, roomHeight);
+        }
+    }
+    /** generates one rectangular room, bottom left corner (x, y) with specified width and height */
+    private static void generateRoom(TETile[][] tiles, int x, int y, int width, int height) {
+        for (int i = x; i < x + width; i++) {
+            for (int j = y; j < y + height; j++) {
+                addPoint(tiles, Tileset.FLOOR, i, j);
+            }
+        }
+    }
+    /** exception handler */
+    private static void addPoint(TETile[][] tiles, TETile tileType, int x, int y) {
+        if (y < 0 || y >= HEIGHT) {
+            return;
+        }
+        if (x < 0 || x >= WIDTH) {
+            return;
+        }
+        tiles[x][y] = tileType;
+    }
+    private static void fillWithNothingTiles(TETile[][] tiles) {
+        for (int x = 0; x < WIDTH; x += 1) {
+            for (int y = 0; y < HEIGHT; y += 1) {
+                tiles[x][y] = Tileset.NOTHING;
+            }
+        }
+    }
+
 }

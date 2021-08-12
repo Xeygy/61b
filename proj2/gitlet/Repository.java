@@ -9,8 +9,6 @@ import java.util.Set;
 
 import static gitlet.Utils.*;
 
-// TODO: any imports you need here
-
 /** Represents a gitlet repository.
  *  TODO: It's a good idea to give a description here of what else this Class
  *  does at a high level.
@@ -19,7 +17,6 @@ import static gitlet.Utils.*;
  */
 public class Repository implements Serializable {
 
-    //TODO: add master branch
     /** The Set of all hashes of commits. Commits are stored with their hash name in .gitlet/commits/  */
     private HashSet commits;
     /** The Set of all files staged for commits. Stores filenames*/
@@ -34,7 +31,6 @@ public class Repository implements Serializable {
     private HashMap<String, String> branches;
 
     /**
-     * TODO: add instance variables here.
      *
      * List all instance variables of the Repository class here with a useful
      * comment above them describing what that variable represents and how that
@@ -56,9 +52,6 @@ public class Repository implements Serializable {
     /** The blob directory */
     public static final File BLOB_DIR = join(GITLET_DIR, "blobs");
 
-
-
-    /* TODO: fill in the rest of this class. */
 
     /** initalizes gitlet directory. creates the first commit and stores it in a hashmap */
     public Repository() {
@@ -96,7 +89,6 @@ public class Repository implements Serializable {
      * puts a reference to the file in the staging Map and copies the file to STAGING_DIR
      * file name in STAGING_DIR is the hash
      * If the CWD file is the same as the file in the current commit, do not stage */
-    //TODO: If the CWD file is the same as the file in the current commit, do not stage
     public void add(String filename) {
         File file = join(CWD, filename);
         if (!file.exists()) {
@@ -142,7 +134,6 @@ public class Repository implements Serializable {
         commits.add(head);
         writeObject(join(COMMITS_DIR, head), commit);
         emptyStagingAreas();
-        //TODO: update branch
     }
     private void emptyStagingAreas() {
         for (String filename : plainFilenamesIn(STAGING_DIR)) {
@@ -162,6 +153,10 @@ public class Repository implements Serializable {
         //Is the file staged, if so, remove from stagingArea
         if (stagingArea.contains(filename)) {
             stagingArea.remove(filename);
+            File stagedFile = join(STAGING_DIR, filename);
+            if (stagedFile.exists()) {
+                stagedFile.delete();
+            }
             reasonToRemoveFile = true;
         }
         //Is the file in the head commit, if so, stage for removal
@@ -187,12 +182,11 @@ public class Repository implements Serializable {
             printCommitInfo(currCommit);
             currCommit = currCommit.getParent();
         }
-        //TODO: Merge logs
     }
     private void printCommitInfo(Commit c) {
         c.printInfo(commitHash(c));
     }
-    //TODO: Merge logs
+
     /** displays all commits ever made in an arbitrary order*/
     public void globalLog() {
         for(String filename : plainFilenamesIn(COMMITS_DIR)) {
@@ -235,12 +229,33 @@ public class Repository implements Serializable {
         for (String filename : plainFilenamesIn(REMOVAL_DIR)) {
             System.out.println(filename);
         }
-        System.out.println("\n=== Modifications Not Staged For Commit ==="); //TODO: this
+        System.out.println("\n=== Modifications Not Staged For Commit ==="); //TODO: order files in lexographic order (nice to have)
         Commit currCommit = getCommit(head);
+        HashSet modifiedFilenames = new HashSet();
         for (String filename : currCommit.getFilenames()) {
-            //different from currCommit
-            if (sha1(readContents(currCommit.getFile(filename))).equals(sha1())) {
-
+            File cwdFile = join(CWD, filename);
+            if (!cwdFile.exists()) {
+                //gone from commit
+                if (!removalArea.contains(filename)) {
+                    // not staged for removal
+                    System.out.println(filename + " (deleted)");
+                    modifiedFilenames.add(filename);
+                }
+            } else if (!sha1(readContents(currCommit.getFile(filename))).equals(sha1(readContents(cwdFile)))
+                && !stagingArea.contains(filename)) {
+                //changed from the commited file and not staged
+                System.out.println(filename + " (modified)");
+                modifiedFilenames.add(filename);
+            }
+        }
+        for (String filename : plainFilenamesIn(STAGING_DIR)) {
+            File cwdFile = join(CWD, filename);
+            File stagedFile = join(STAGING_DIR, filename);
+            if (!cwdFile.exists() && !modifiedFilenames.contains(filename)) {
+                System.out.println(filename + " (deleted)");
+            } else if (!modifiedFilenames.contains(filename) &&
+                    !sha1(readContents(stagedFile)).equals(sha1(readContents(cwdFile)))) {
+                System.out.println(filename + " (modified)");
             }
         }
         System.out.println("\n=== Untracked Files ===");
@@ -351,7 +366,6 @@ public class Repository implements Serializable {
         checkoutBranch(currBranch, true);
      }
 
-    //TODO: commit merge
     public void merge(String branchB) {
          merge(currBranch, branchB);
     }
@@ -383,7 +397,7 @@ public class Repository implements Serializable {
          }
          //Actual merging
          boolean mergeConflictOccurred = false;
-         Set<String> splitFiles = splitPoint.getFilenames(); //TODO: NULLPOINTEREXCEPTION
+         Set<String> splitFiles = splitPoint.getFilenames();
          for (String filename : splitFiles) {
              String aHash = commitA.getFileHash(filename);
              String bHash = commitB.getFileHash(filename);
@@ -442,11 +456,11 @@ public class Repository implements Serializable {
      private Commit findSplitPoint(Commit a, Commit b) {
          HashSet aLog = new HashSet();
          while(a != null) {
-             aLog.add(a);
+             aLog.add(commitHash(a));
              a = a.getParent();
          }
          while (b != null) {
-             if (aLog.contains(b)) {
+             if (aLog.contains(commitHash(b))) {
                  return b;
              }
              b = b.getParent();
