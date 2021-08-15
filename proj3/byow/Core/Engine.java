@@ -12,10 +12,11 @@ public class Engine {
     public static final int WIDTH = 80;
     public static final int HEIGHT = 30;
 
-    //TEMP TESTING MAIN CLASS
+    /** random inputs */
     int seed = 0; //modified by input
     Random random = new Random(seed);
 
+    //TEMP TESTING MAIN CLASS
     public static void main(String[] args) {
         TERenderer ter = new TERenderer();
         ter.initialize(WIDTH, HEIGHT);
@@ -70,8 +71,9 @@ public class Engine {
             seed = Integer.parseInt(input.substring(nIndex + 1, sIndex));
             random = new Random(seed);
         }
-        generateRooms(finalWorldFrame, 40);
-
+        //generateRooms(finalWorldFrame, 40);
+        generatePath(finalWorldFrame, 0, 0, 15, 15);
+        generateWalls(finalWorldFrame);
         return finalWorldFrame;
     }
     /** adds n rectangular rooms with possible sidelengths between 2 and 6, inclusive */
@@ -92,6 +94,46 @@ public class Engine {
             }
         }
     }
+    /** adds walls to existing floor blocks */
+    private static void generateWalls(TETile[][] tiles) {
+        for (int x = 0; x < WIDTH; x++) {
+            for (int y = 0; y < HEIGHT; y++) {
+                if (isValidWallSpace(tiles, x, y)) {
+                    tiles[x][y] = Tileset.WALL;
+                }
+            }
+        }
+    }
+    /** checks if point is valid wall location */
+    private static boolean isValidWallSpace(TETile[][] tiles, int x, int y) {
+        if (tiles[x][y].equals(Tileset.NOTHING)) {
+            //scans tiles around the tile to see if it has a floor tile near it
+            for (int i = x - 1; i <= x + 1; i++) {
+                for (int j = y - 1; j <= y + 1; j++) {
+                    if (i >= 0 && i < WIDTH && j >= 0 && j < HEIGHT &&
+                        tiles[i][j].equals(Tileset.FLOOR)) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+    /** generates a path between point x1 y1 and x2 y2
+     * looks like this:
+     *              ||==========X
+     *              || ^random distance
+     *              ||
+     *    X=========||
+     *      ^random distance
+     * TODO: Make distance random
+     **/
+    private static void generatePath(TETile[][] tiles, int x1, int y1, int x2, int y2) {
+        int verticalHallwayLoc = x1 - (x1-x2) / 2;
+        hLine(tiles, Tileset.FLOOR, y1, x1, verticalHallwayLoc);
+        hLine(tiles, Tileset.FLOOR, y2, verticalHallwayLoc, x2 + 1);
+        vLine(tiles, Tileset.FLOOR, verticalHallwayLoc, y1, y2);
+    }
     /** exception handler */
     private static void addPoint(TETile[][] tiles, TETile tileType, int x, int y) {
         if (y < 0 || y >= HEIGHT) {
@@ -101,6 +143,18 @@ public class Engine {
             return;
         }
         tiles[x][y] = tileType;
+    }
+    /** draws horizontal line, at y, starting at xStart (inclusive) and ending at xEnd (exclusive), start < end */
+    private static void hLine(TETile tiles[][], TETile tileType, int y, int xStart, int xEnd) {
+        for (int x = xStart; x < xEnd; x++) {
+            addPoint(tiles, tileType, x, y);
+        }
+    }
+    /** draws vertical line, at x, starting at yStart (inclusive) and ending at yEnd (exclusive), start < end */
+    private static void vLine(TETile tiles[][], TETile tileType, int x, int yStart, int yEnd) {
+        for (int y = yStart; y < yEnd; y++) {
+            addPoint(tiles, tileType, x, y);
+        }
     }
     private static void fillWithNothingTiles(TETile[][] tiles) {
         for (int x = 0; x < WIDTH; x += 1) {
