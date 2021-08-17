@@ -4,6 +4,8 @@ import byow.TileEngine.TERenderer;
 import byow.TileEngine.TETile;
 import byow.TileEngine.Tileset;
 
+import java.util.LinkedList;
+import java.util.Queue;
 import java.util.Random;
 
 public class Engine {
@@ -71,10 +73,73 @@ public class Engine {
             seed = Integer.parseInt(input.substring(nIndex + 1, sIndex));
             random = new Random(seed);
         }
-        //generateRooms(finalWorldFrame, 40);
-        generatePath(finalWorldFrame, 0, 0, 15, 15);
+        brogueGen(finalWorldFrame);
         generateWalls(finalWorldFrame);
         return finalWorldFrame;
+    }
+    //queue of points to create rooms. points are arrays with an x and y value
+    Queue<int[]> connectionPoints = new LinkedList();
+    private void brogueGen(TETile[][] tiles) {
+        int[] firstPoint = {WIDTH/2, HEIGHT/2};
+        connectionPoints.add(firstPoint);
+        while (!connectionPoints.isEmpty()) {
+            brogueGenRoom(tiles);
+        }
+    }
+    private void brogueGenRoom(TETile[][] tiles) {
+        int[] currPoint = connectionPoints.remove();
+        int roomX1 = currPoint[0];
+        int roomY1 = currPoint[1];
+        int roomX2 = roomX1 + random.nextInt(5) + 2; //0 to 4, plus 2
+        int roomY2 = roomY1 + random.nextInt(5) + 2;
+        if (isNothingSpace(tiles, roomX1, roomY1, roomX2, roomY2)) {
+            drawRect(tiles, Tileset.FLOOR, roomX1, roomY1, roomX2, roomY2);
+
+            int xMidPoint = roomX1 + (roomX2 - roomX1) / 2;
+            int yMidPoint = roomY1 + (roomY2 - roomY1) / 2;
+            //below
+            int newX = xMidPoint + random.nextInt(5) - 2;
+            int newY = roomY1 - random.nextInt(5) - 5;
+            generatePath(tiles, xMidPoint, roomY1, newX, newY);
+            connectionPoints.add(new int[] {newX, newY});
+            //above
+            newX = xMidPoint + random.nextInt(5) - 2;
+            newY = roomY1 + random.nextInt(5) + 5;
+            generatePath(tiles, xMidPoint, roomY2, newX, newY);
+            connectionPoints.add(new int[] {newX, newY});
+            //left
+            newX = roomX1 - random.nextInt(5) - 5;
+            newY = yMidPoint + random.nextInt(5) - 2;
+            generatePath(tiles, roomX1, yMidPoint, newX, newY);
+            connectionPoints.add(new int[] {newX, newY});
+            //right
+            newX = roomX2 + random.nextInt(5) + 5;
+            newY = yMidPoint + random.nextInt(5) - 2;
+            generatePath(tiles, roomX2, yMidPoint, newX, newY);
+            connectionPoints.add(new int[] {newX, newY});
+        }
+    }
+    /** x1 < x2, y1 < y2 */
+    private void drawRect(TETile[][] tiles, TETile tileType, int x1, int y1, int x2, int y2) {
+        for (int x = x1; x <= x2; x++) {
+            for (int y = y1; y <= y2; y++) {
+                addPoint(tiles, tileType, x, y);
+            }
+        }
+    }
+    /** checks that the retangle defined by (x1, y1) (x2, y2) inclusive, is availible */
+    private boolean isNothingSpace(TETile[][] tiles, int x1, int y1, int x2, int y2) {
+        for (int x = x1; x <= x2; x++) {
+            for (int y = y1; y <= y2; y++) {
+                if (x1 < 1 || x2 >= WIDTH - 1 || y1 < 1 || y2 >= HEIGHT - 1) {
+                    return false;
+                }
+                if (!tiles[x][y].equals(Tileset.NOTHING)) {
+                    return false;
+                }
+            }
+        }
+        return true;
     }
     /** adds n rectangular rooms with possible sidelengths between 2 and 6, inclusive */
     private void generateRooms(TETile[][] tiles, int n) {
@@ -94,6 +159,7 @@ public class Engine {
             }
         }
     }
+
     /** adds walls to existing floor blocks */
     private static void generateWalls(TETile[][] tiles) {
         for (int x = 0; x < WIDTH; x++) {
@@ -119,6 +185,7 @@ public class Engine {
         }
         return false;
     }
+
     /** generates a path between point x1 y1 and x2 y2
      * looks like this:
      *              ||==========X
@@ -129,11 +196,22 @@ public class Engine {
      * TODO: Make distance random
      **/
     private static void generatePath(TETile[][] tiles, int x1, int y1, int x2, int y2) {
+        if (x1 > x2) {
+            int temp = x1;
+            x1 = x2;
+            x2 = temp;
+        }
+        if (y1 > y2) {
+            int temp = y1;
+            y1 = y2;
+            y2 = temp;
+        }
         int verticalHallwayLoc = x1 - (x1-x2) / 2;
         hLine(tiles, Tileset.FLOOR, y1, x1, verticalHallwayLoc);
         hLine(tiles, Tileset.FLOOR, y2, verticalHallwayLoc, x2 + 1);
         vLine(tiles, Tileset.FLOOR, verticalHallwayLoc, y1, y2);
     }
+
     /** exception handler */
     private static void addPoint(TETile[][] tiles, TETile tileType, int x, int y) {
         if (y < 0 || y >= HEIGHT) {
