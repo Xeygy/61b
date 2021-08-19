@@ -4,14 +4,15 @@ import byow.TileEngine.TERenderer;
 import byow.TileEngine.TETile;
 import byow.TileEngine.Tileset;
 
+import java.awt.*;
 import java.util.Random;
 
 /**
  * Draws a world that contains RANDOM tiles.
  */
 public class RandomWorldDemo {
-    private static final int WIDTH = 50;
-    private static final int HEIGHT = 50;
+    private static final int WIDTH = 80;
+    private static final int HEIGHT = 40;
 
     private static final long SEED = 2873123;
     private static final Random RANDOM = new Random(SEED);
@@ -36,12 +37,17 @@ public class RandomWorldDemo {
      */
     private static TETile randomTile() {
         int tileNum = RANDOM.nextInt(3);
-        switch (tileNum) {
+        int r = RANDOM.nextInt(256);
+        int g = RANDOM.nextInt(256);
+        int b = RANDOM.nextInt(256);
+        Color tileColor = new Color(r, g, b);
+        return new TETile('·', tileColor, tileColor, "a");
+        /* switch (tileNum) {
             case 0: return Tileset.WALL;
             case 1: return Tileset.FLOWER;
             case 2: return Tileset.NOTHING;
             default: return Tileset.NOTHING;
-        }
+        } */
     }
 
     public static void main(String[] args) {

@@ -7,6 +7,7 @@ import byow.TileEngine.Tileset;
 import java.util.LinkedList;
 import java.util.Queue;
 import java.util.Random;
+import java.util.concurrent.TimeUnit;
 
 public class Engine {
     TERenderer ter = new TERenderer();
@@ -16,16 +17,30 @@ public class Engine {
 
     /** random inputs */
     int seed = 0; //modified by input
-    Random random = new Random(seed);
+    Random random;
 
     //TEMP TESTING MAIN CLASS
     public static void main(String[] args) {
         TERenderer ter = new TERenderer();
         ter.initialize(WIDTH, HEIGHT);
         Engine engine = new Engine();
-        ter.renderFrame(engine.interactWithInputString("N12345S"));
+        //multiRender(10, engine, 5);
+        ter.renderFrame(engine.interactWithInputString("n5195s"));
     }
-
+    //helper to run multiple tests, secs is the amount of time in between renders
+    public static void multiRender(int n, Engine engine, int secs) {
+        TERenderer ter = new TERenderer();
+        for (int i = 0; i < n; i++) {
+            int seed = (int) (Math.random() * 10000); //cool seed 8602; 5195 has a thruline
+            ter.renderFrame(engine.interactWithInputString("n" + seed + "s"));
+            System.out.println(seed);
+            try {
+                TimeUnit.SECONDS.sleep(secs);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+    }
     /**
      * Method used for exploring a fresh world. This method should handle all inputs,
      * including inputs from the main menu.
@@ -70,53 +85,34 @@ public class Engine {
         int nIndex = input.indexOf("n");
         int sIndex = input.indexOf("s");
         if (nIndex != -1 && sIndex != -1) {
-            seed = Integer.parseInt(input.substring(nIndex + 1, sIndex));
-            random = new Random(seed);
+            seed = Integer.parseInt(input.substring(nIndex + 1, sIndex)); //default 0
         }
-        brogueGen(finalWorldFrame);
+        random = new Random(seed);
+        roomGen(finalWorldFrame);
         generateWalls(finalWorldFrame);
         return finalWorldFrame;
     }
-    //queue of points to create rooms. points are arrays with an x and y value
-    Queue<int[]> connectionPoints = new LinkedList();
-    private void brogueGen(TETile[][] tiles) {
-        int[] firstPoint = {WIDTH/2, HEIGHT/2};
-        connectionPoints.add(firstPoint);
-        while (!connectionPoints.isEmpty()) {
-            brogueGenRoom(tiles);
-        }
-    }
-    private void brogueGenRoom(TETile[][] tiles) {
-        int[] currPoint = connectionPoints.remove();
-        int roomX1 = currPoint[0];
-        int roomY1 = currPoint[1];
-        int roomX2 = roomX1 + random.nextInt(5) + 2; //0 to 4, plus 2
-        int roomY2 = roomY1 + random.nextInt(5) + 2;
-        if (isNothingSpace(tiles, roomX1, roomY1, roomX2, roomY2)) {
-            drawRect(tiles, Tileset.FLOOR, roomX1, roomY1, roomX2, roomY2);
 
-            int xMidPoint = roomX1 + (roomX2 - roomX1) / 2;
-            int yMidPoint = roomY1 + (roomY2 - roomY1) / 2;
-            //below
-            int newX = xMidPoint + random.nextInt(5) - 2;
-            int newY = roomY1 - random.nextInt(5) - 5;
-            generatePath(tiles, xMidPoint, roomY1, newX, newY);
-            connectionPoints.add(new int[] {newX, newY});
-            //above
-            newX = xMidPoint + random.nextInt(5) - 2;
-            newY = roomY1 + random.nextInt(5) + 5;
-            generatePath(tiles, xMidPoint, roomY2, newX, newY);
-            connectionPoints.add(new int[] {newX, newY});
-            //left
-            newX = roomX1 - random.nextInt(5) - 5;
-            newY = yMidPoint + random.nextInt(5) - 2;
-            generatePath(tiles, roomX1, yMidPoint, newX, newY);
-            connectionPoints.add(new int[] {newX, newY});
-            //right
-            newX = roomX2 + random.nextInt(5) + 5;
-            newY = yMidPoint + random.nextInt(5) - 2;
-            generatePath(tiles, roomX2, yMidPoint, newX, newY);
-            connectionPoints.add(new int[] {newX, newY});
+    //TODO: clean code, make width, height, and numRooms easily modifiable
+    private void roomGen(TETile[][] tiles) {
+        int prevX = random.nextInt(WIDTH - 2) + 1; //spacing on the border so the path doesn't generate on an edge
+        int prevY = random.nextInt(HEIGHT - 2) + 1;
+        int width = (random.nextInt(5) + 4) / 2; //1 to 3 (real width 2 to 6)
+        int height = (random.nextInt(5) + 2) / 2;
+        drawRect(tiles, Tileset.FLOOR, prevX - width, prevY - height, prevX + width, prevY + height);
+        for (int i = 1; i < 18; i++) {
+            int randomX = random.nextInt(WIDTH / 10) + i * WIDTH / 20;
+            int randomY = random.nextInt(HEIGHT / 2 ) + ((HEIGHT - 6) / 2) * (i % 2); // -6 is to match the roomwidth gen
+            width = (random.nextInt(5) + 4) / 2; //1 to 3 (real width 2 to 6)
+            height = (random.nextInt(5) + 2) / 2;
+            if (i == 1 || i == 19) {
+                generateVertPath(tiles, prevX, prevY, randomX, randomY);
+            } else {
+                generatePath(tiles, prevX, prevY, randomX, randomY);
+            }
+            drawRect(tiles, Tileset.FLOOR, randomX - width, randomY - height, randomX + width, randomY + height);
+            prevX = randomX;
+            prevY = randomY;
         }
     }
     /** x1 < x2, y1 < y2 */
@@ -182,6 +178,8 @@ public class Engine {
                     }
                 }
             }
+        } else if (x == 0 || y == 0 || x == WIDTH - 1 || y == HEIGHT - 1) {
+            return true;
         }
         return false;
     }
@@ -195,21 +193,27 @@ public class Engine {
      *      ^random distance
      * TODO: Make distance random
      **/
-    private static void generatePath(TETile[][] tiles, int x1, int y1, int x2, int y2) {
-        if (x1 > x2) {
-            int temp = x1;
-            x1 = x2;
-            x2 = temp;
+    //TODO: weird drawing bugs inaccuracies
+    private void generatePath(TETile[][] tiles, int x1, int y1, int x2, int y2) {
+        int rand = random.nextInt(2);
+        switch (rand) {
+            case 0:
+                generateHorizPath(tiles,x1,y1,x2,y2);
+            case 1:
+                generateVertPath(tiles,x1,y1,x2,y2);
         }
-        if (y1 > y2) {
-            int temp = y1;
-            y1 = y2;
-            y2 = temp;
-        }
+    }
+    private static void generateHorizPath(TETile[][] tiles, int x1, int y1, int x2, int y2) {
         int verticalHallwayLoc = x1 - (x1-x2) / 2;
         hLine(tiles, Tileset.FLOOR, y1, x1, verticalHallwayLoc);
-        hLine(tiles, Tileset.FLOOR, y2, verticalHallwayLoc, x2 + 1);
+        hLine(tiles, Tileset.FLOOR, y2, verticalHallwayLoc, x2);
         vLine(tiles, Tileset.FLOOR, verticalHallwayLoc, y1, y2);
+    }
+    private static void generateVertPath(TETile[][] tiles, int x1, int y1, int x2, int y2) {
+        int horizHallwayLoc = y1 - (y1-y2) / 2;
+        vLine(tiles, Tileset.FLOOR, x1, y1, horizHallwayLoc);
+        vLine(tiles, Tileset.FLOOR, x2, horizHallwayLoc, y2);
+        hLine(tiles, Tileset.FLOOR, horizHallwayLoc, x1, x2);
     }
 
     /** exception handler */
@@ -222,15 +226,25 @@ public class Engine {
         }
         tiles[x][y] = tileType;
     }
-    /** draws horizontal line, at y, starting at xStart (inclusive) and ending at xEnd (exclusive), start < end */
+    /** draws horizontal line, at y, starting at xStart (inclusive) and ending at xEnd (inclusive) */
     private static void hLine(TETile tiles[][], TETile tileType, int y, int xStart, int xEnd) {
-        for (int x = xStart; x < xEnd; x++) {
+        if (xEnd < xStart) {
+            int temp = xEnd;
+            xEnd = xStart;
+            xStart = temp;
+        }
+        for (int x = xStart; x <= xEnd; x++) {
             addPoint(tiles, tileType, x, y);
         }
     }
-    /** draws vertical line, at x, starting at yStart (inclusive) and ending at yEnd (exclusive), start < end */
+    /** draws vertical line, at x, starting at yStart (inclusive) and ending at yEnd (inclusive) */
     private static void vLine(TETile tiles[][], TETile tileType, int x, int yStart, int yEnd) {
-        for (int y = yStart; y < yEnd; y++) {
+        if (yStart > yEnd) {
+            int temp = yEnd;
+            yEnd = yStart;
+            yStart = temp;
+        }
+        for (int y = yStart; y <= yEnd; y++) {
             addPoint(tiles, tileType, x, y);
         }
     }
