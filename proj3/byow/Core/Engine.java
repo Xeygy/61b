@@ -25,13 +25,13 @@ public class Engine {
         ter.initialize(WIDTH, HEIGHT);
         Engine engine = new Engine();
         //multiRender(10, engine, 5);
-        ter.renderFrame(engine.interactWithInputString("n5195s"));
+        ter.renderFrame(engine.interactWithInputString("n8990s"));
     }
     //helper to run multiple tests, secs is the amount of time in between renders
     public static void multiRender(int n, Engine engine, int secs) {
         TERenderer ter = new TERenderer();
         for (int i = 0; i < n; i++) {
-            int seed = (int) (Math.random() * 10000); //cool seed 8602; 5195 has a thruline
+            int seed = (int) (Math.random() * 10000); //cool seed 8602; 5195 has a thruline; 8990 wall bug
             ter.renderFrame(engine.interactWithInputString("n" + seed + "s"));
             System.out.println(seed);
             try {
@@ -88,29 +88,32 @@ public class Engine {
             seed = Integer.parseInt(input.substring(nIndex + 1, sIndex)); //default 0
         }
         random = new Random(seed);
-        roomGen(finalWorldFrame);
+        roomGen(finalWorldFrame, 2, 6, 20);
         generateWalls(finalWorldFrame);
         return finalWorldFrame;
     }
 
-    //TODO: clean code, make width, height, and numRooms easily modifiable
-    private void roomGen(TETile[][] tiles) {
-        int prevX = random.nextInt(WIDTH - 2) + 1; //spacing on the border so the path doesn't generate on an edge
-        int prevY = random.nextInt(HEIGHT - 2) + 1;
-        int width = (random.nextInt(5) + 4) / 2; //1 to 3 (real width 2 to 6)
-        int height = (random.nextInt(5) + 2) / 2;
-        drawRect(tiles, Tileset.FLOOR, prevX - width, prevY - height, prevX + width, prevY + height);
-        for (int i = 1; i < 18; i++) {
+    //TODO: clean code, make numRooms easily modifiable
+    private void roomGen(TETile[][] tiles, int minDim, int maxDim, int numRooms) {
+        int maxMinDiff = maxDim - minDim;
+        int prevX = 0;
+        int prevY = 0;
+        for (int i = 0; i < 18; i++) {
+            int width = random.nextInt(maxMinDiff) + minDim;
+            int height = random.nextInt(maxMinDiff) + minDim;
+            if (i == 0) {
+                prevX = random.nextInt(WIDTH - 2) + 1; //spacing on the border so the path doesn't generate on an edge
+                prevY = random.nextInt(HEIGHT - 2) + 1;
+                drawRect(tiles, Tileset.FLOOR, prevX - width/2, prevY - height/2, prevX + width/2, prevY + height/2);
+            }
             int randomX = random.nextInt(WIDTH / 10) + i * WIDTH / 20;
             int randomY = random.nextInt(HEIGHT / 2 ) + ((HEIGHT - 6) / 2) * (i % 2); // -6 is to match the roomwidth gen
-            width = (random.nextInt(5) + 4) / 2; //1 to 3 (real width 2 to 6)
-            height = (random.nextInt(5) + 2) / 2;
             if (i == 1 || i == 19) {
                 generateVertPath(tiles, prevX, prevY, randomX, randomY);
             } else {
                 generatePath(tiles, prevX, prevY, randomX, randomY);
             }
-            drawRect(tiles, Tileset.FLOOR, randomX - width, randomY - height, randomX + width, randomY + height);
+            drawRect(tiles, Tileset.FLOOR, randomX - width/2, randomY - height/2, randomX + width/2, randomY + height/2);
             prevX = randomX;
             prevY = randomY;
         }
