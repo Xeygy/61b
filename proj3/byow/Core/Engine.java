@@ -1,9 +1,14 @@
 package byow.Core;
 
+import byow.InputDemo.InputSource;
+import byow.InputDemo.KeyboardInputSource;
+import byow.InputDemo.StringInputDevice;
 import byow.TileEngine.TERenderer;
 import byow.TileEngine.TETile;
 import byow.TileEngine.Tileset;
+import edu.princeton.cs.introcs.StdDraw;
 
+import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.Queue;
 import java.util.Random;
@@ -18,20 +23,23 @@ public class Engine {
     /** random inputs */
     int seed = 0; //modified by input
     Random random;
-
+    Player player;
+    InputSource iP;
+    TETile[][] world;
     //TEMP TESTING MAIN CLASS
     public static void main(String[] args) {
         TERenderer ter = new TERenderer();
         ter.initialize(WIDTH, HEIGHT);
         Engine engine = new Engine();
         //multiRender(10, engine, 5);
-        ter.renderFrame(engine.interactWithInputString("n8990s"));
+        //ter.renderFrame(engine.interactWithInputString("n8990sWAAAAAASSDD"));
+        engine.interactWithKeyboard();
     }
     //helper to run multiple tests, secs is the amount of time in between renders
     public static void multiRender(int n, Engine engine, int secs) {
         TERenderer ter = new TERenderer();
         for (int i = 0; i < n; i++) {
-            int seed = (int) (Math.random() * 10000); //cool seed 8602; 5195 has a thruline; 8990 wall bug
+            int seed = (int) (Math.random() * 10000); //cool seed 8602, 6254; 5195 has a thruline; 8990 wall bug
             ter.renderFrame(engine.interactWithInputString("n" + seed + "s"));
             System.out.println(seed);
             try {
@@ -41,11 +49,77 @@ public class Engine {
             }
         }
     }
+
+    public void interactWithInputSource() {
+        //assumes input source is created
+        TERenderer ter = new TERenderer();
+        ter.initialize(WIDTH, HEIGHT);
+
+        boolean nextScreen = false;
+        InputSource inputSource = iP;
+        StdDraw.text(WIDTH/2, HEIGHT/2, "press N for new game");
+        while (!nextScreen && inputSource.possibleNextInput()) {
+            switch (inputSource.getNextKey()) {
+                case 'N':
+                    //new game
+                    nextScreen = true;
+                case 'L':
+                    //load game, do last
+                case 'Q':
+                    //quit
+            }
+        }
+        nextScreen = false;
+        String seed = "";
+        String ints = "1234567890";
+        while (!nextScreen  && inputSource.possibleNextInput()) {
+            char c = inputSource.getNextKey();
+            if (ints.indexOf(c) == -1) {
+                nextScreen = true;
+            } else {
+                seed = seed + c;
+            }
+        }
+        this.seed = Integer.parseInt(seed);
+        random = new Random(this.seed);
+        roomGen(world, 2, 6, 20);
+        generateWalls(world);
+        ter.renderFrame(world);
+    }
     /**
      * Method used for exploring a fresh world. This method should handle all inputs,
      * including inputs from the main menu.
      */
     public void interactWithKeyboard() {
+        boolean nextScreen = false;
+        InputSource inputSource = new KeyboardInputSource();
+        StdDraw.text(WIDTH/2, HEIGHT/2, "press N for new game");
+        while (!nextScreen && inputSource.possibleNextInput()) {
+            switch (inputSource.getNextKey()) {
+                case 'N':
+                    //new game
+                    nextScreen = true;
+                case 'L':
+                    //load game, do last
+                case 'Q':
+                    //quit
+            }
+        }
+        nextScreen = false;
+        String seed = "";
+        String ints = "1234567890";
+        while (!nextScreen  && inputSource.possibleNextInput()) {
+            char c = inputSource.getNextKey();
+            if (ints.indexOf(c) == -1) {
+                nextScreen = true;
+            } else {
+                seed = seed + c;
+            }
+        }
+        this.seed = Integer.parseInt(seed);
+        random = new Random(this.seed);
+
+
     }
 
     /**
@@ -81,7 +155,7 @@ public class Engine {
         TETile[][] finalWorldFrame = new TETile[WIDTH][HEIGHT];
         fillWithNothingTiles(finalWorldFrame);
 
-        /** read input */
+        /** generate world */
         int nIndex = input.indexOf("n");
         int sIndex = input.indexOf("s");
         if (nIndex != -1 && sIndex != -1) {
@@ -90,6 +164,27 @@ public class Engine {
         random = new Random(seed);
         roomGen(finalWorldFrame, 2, 6, 20);
         generateWalls(finalWorldFrame);
+
+        //TODO: make modifiable
+        InputSource inputSource = new StringInputDevice(input.substring(sIndex + 1));
+        /** register movement */
+        while (inputSource.possibleNextInput()) {
+            char c = inputSource.getNextKey();
+            switch (c) {
+                case 'W':
+                    player.moveUp(finalWorldFrame);
+                    continue;
+                case 'A':
+                    player.moveLeft(finalWorldFrame);
+                    continue;
+                case 'S':
+                    player.moveDown(finalWorldFrame);
+                    continue;
+                case 'D':
+                    player.moveRight(finalWorldFrame);
+                    continue;
+            }
+        }
         return finalWorldFrame;
     }
 
@@ -105,6 +200,7 @@ public class Engine {
                 prevX = random.nextInt(WIDTH - 2) + 1; //spacing on the border so the path doesn't generate on an edge
                 prevY = random.nextInt(HEIGHT - 2) + 1;
                 drawRect(tiles, Tileset.FLOOR, prevX - width/2, prevY - height/2, prevX + width/2, prevY + height/2);
+                player = new Player(prevX, prevY, tiles);
             }
             int randomX = random.nextInt(WIDTH / 10) + i * WIDTH / 20;
             int randomY = random.nextInt(HEIGHT / 2 ) + ((HEIGHT - 6) / 2) * (i % 2); // -6 is to match the roomwidth gen
@@ -123,38 +219,6 @@ public class Engine {
         for (int x = x1; x <= x2; x++) {
             for (int y = y1; y <= y2; y++) {
                 addPoint(tiles, tileType, x, y);
-            }
-        }
-    }
-    /** checks that the retangle defined by (x1, y1) (x2, y2) inclusive, is availible */
-    private boolean isNothingSpace(TETile[][] tiles, int x1, int y1, int x2, int y2) {
-        for (int x = x1; x <= x2; x++) {
-            for (int y = y1; y <= y2; y++) {
-                if (x1 < 1 || x2 >= WIDTH - 1 || y1 < 1 || y2 >= HEIGHT - 1) {
-                    return false;
-                }
-                if (!tiles[x][y].equals(Tileset.NOTHING)) {
-                    return false;
-                }
-            }
-        }
-        return true;
-    }
-    /** adds n rectangular rooms with possible sidelengths between 2 and 6, inclusive */
-    private void generateRooms(TETile[][] tiles, int n) {
-        for (int i = 0; i < n; i++) {
-            int roomX = random.nextInt(WIDTH);
-            int roomY = random.nextInt(HEIGHT);
-            int roomWidth = random.nextInt(5) + 2; //0 to 4, plus 2
-            int roomHeight = random.nextInt(5) + 2;
-            generateRoom(tiles, roomX, roomY, roomWidth, roomHeight);
-        }
-    }
-    /** generates one rectangular room, bottom left corner (x, y) with specified width and height */
-    private static void generateRoom(TETile[][] tiles, int x, int y, int width, int height) {
-        for (int i = x; i < x + width; i++) {
-            for (int j = y; j < y + height; j++) {
-                addPoint(tiles, Tileset.FLOOR, i, j);
             }
         }
     }
@@ -190,13 +254,12 @@ public class Engine {
     /** generates a path between point x1 y1 and x2 y2
      * looks like this:
      *              ||==========X
-     *              || ^random distance
+     *              ||
      *              ||
      *    X=========||
-     *      ^random distance
-     * TODO: Make distance random
+     *              ^ halfway point
      **/
-    //TODO: weird drawing bugs inaccuracies
+    /** randomly generates either a path sticking out from the side of a room or from the top/bottom of the room */
     private void generatePath(TETile[][] tiles, int x1, int y1, int x2, int y2) {
         int rand = random.nextInt(2);
         switch (rand) {
@@ -219,7 +282,7 @@ public class Engine {
         hLine(tiles, Tileset.FLOOR, horizHallwayLoc, x1, x2);
     }
 
-    /** exception handler */
+    /** exception handler, allows calls to draw outside the bounds without error */
     private static void addPoint(TETile[][] tiles, TETile tileType, int x, int y) {
         if (y < 0 || y >= HEIGHT) {
             return;
@@ -227,7 +290,9 @@ public class Engine {
         if (x < 0 || x >= WIDTH) {
             return;
         }
-        tiles[x][y] = tileType;
+        if (tiles[x][y].equals(Tileset.NOTHING)) {
+            tiles[x][y] = tileType;
+        }
     }
     /** draws horizontal line, at y, starting at xStart (inclusive) and ending at xEnd (inclusive) */
     private static void hLine(TETile tiles[][], TETile tileType, int y, int xStart, int xEnd) {
